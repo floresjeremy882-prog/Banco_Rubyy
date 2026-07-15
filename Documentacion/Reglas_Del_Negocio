@@ -1,0 +1,53 @@
+# Reglas de Negocio - Banco Ruby
+
+##  1. Reglas Generales de Negocio
+
+1. **Nombre del Sistema**: Banco Ruby (Servicio de Backend).
+2. **Conexión Externa**: Se conecta a un "Intermediario Externo" mediante una API de Eventos (Pub/Sub) de forma completamente asíncrona y desacoplada.
+3. **Persistencia y Datos**: Toda la información esta presente en la base de datos **PostgreSQL**, o bien obtenerse mediante la interacción directa con el Intermediario.
+4. **Seguridad en Cajeros**: El ATM (cliente) nunca se conecta de forma directa a la base de datos de PostgreSQL por motivos de seguridad. Interactúa exclusivamente con el backend a través de endpoints REST o eventos.
+
+
+##  2. Arquitectura de Software y Patrones
+
+* **Arquitectura por Capas (Backend)**: El backend (`Banco_Ruby`) está estructurado bajo una arquitectura tradicional por capas (Presentación, Aplicación, Dominio e Infraestructura), separando limpiamente la exposición de APIs, las reglas de negocio, los modelos de dominio y la integración con la base de datos y mensajería.
+* **Arquitectura por Capas (Cliente)**: El simulador de cliente (`Usuario_Cliente`) está estructurado en capas tradicionales (Presentación, Aplicación, Dominio e Infraestructura) para aislar la simulación visual de la conexión de red.
+* **CQRS (Command Query Responsibility Segregation)**:
+  * **Queries (Consultas)**: Solo leen información de la base de datos (ej. Consultar Saldo o Consultar Movimientos) y no modifican el estado.
+  * **Commands (Comandos)**: Realizan operaciones que modifican el estado del sistema (ej. Retirar, Depositar o Transferir).
+* **MediatR**: Se utiliza como mediador en memoria para desacoplar los endpoints de los controladores/handlers.
+* **Arquitectura Dirigida por Eventos (Event-Driven Architecture - EDA)**: La comunicación con el intermediario externo se maneja a través de la publicación y suscripción de eventos asíncronos.
+
+
+##  3. Flujo General de un Comando (Ejemplo: Retiro)
+
+El procesamiento de comandos sigue un flujo desacoplado a través del Intermediario:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor ATM as Cajero (ATM)
+    participant API as Endpoint (Banco Ruby)
+    participant H as Handler (MediatR)
+    participant DB as PostgreSQL
+    participant INF as ApiEventos (Infraestructura)
+    participant INT as Intermediario Externo
+
+    ATM->>API: Envía petición de Comando (ej: Solicitar Retiro)
+    API->>H: Envía comando a través de MediatR
+    H->>H: Valida datos y publica evento interno (ej: RetiroSolicitado)
+    H->>INF: Captura el evento interno
+    INF->>INT: Envía evento al Intermediario de forma asíncrona
+    INT-->>INF: Responde asíncronamente con evento (ej: RetiroAprobado)
+    INF->>DB: Consumidor de eventos actualiza el estado en la BD
+    INF-->>ATM: Responde confirmación de la transacción al cajero
+```
+
+1. **Envío de Petición**: El Cajero (ATM) envía la petición de Comando (ej: Solicitar Retiro) al endpoint de la API en el backend.
+2. **Mediador**: El endpoint delega la petición enviando el comando a través de **MediatR**.
+3. **Validación y Evento de Dominio**: El `Handler` valida los datos del comando y publica un evento interno (ej: `RetiroSolicitado`).
+4. **Captura del Evento**: El publicador/suscriptor interno en la capa de infraestructura captura el evento.
+5. **Envío al Intermediario**: La infraestructura envía el evento al **Intermediario Externo** de forma asíncrona.
+6. **Respuesta del Intermediario**: El Intermediario procesa el evento y responde de manera asíncrona con un evento de aprobación o rechazo (ej: `RetiroAprobado`).
+7. **Consumo y Actualización**: El consumidor de eventos en la sección de `ApiEventos` recibe la respuesta y actualiza el estado de la transacción en la base de datos **PostgreSQL**.
+8. **Notificación al Cliente**: Se envía la confirmación final al cajero (ATM) para completar la transacción.
