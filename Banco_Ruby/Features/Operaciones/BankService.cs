@@ -106,7 +106,7 @@ public sealed class BankService : IBankService
             return OperationResult<HistorialResponse>.Fail(cuentaResult.StatusCode, cuentaResult.Error!);
         }
 
-        var auditorias = await _db.Auditoria
+        List<HistorialItem> auditorias = await _db.Auditoria
             .AsNoTracking()
             .Where(a => a.CuentaId == cuentaResult.Value.CuentaId)
             .OrderByDescending(a => a.CreadoEn)

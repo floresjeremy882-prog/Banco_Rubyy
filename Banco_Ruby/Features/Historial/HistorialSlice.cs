@@ -14,13 +14,15 @@ public static class HistorialSlice
             return Results.NotFound(new { error = "Cuenta no encontrada o inactiva." });
         }
 
-        var auditorias = await db.Auditoria
+        List<HistorialResumen> auditorias = await db.Auditoria
             .AsNoTracking()
             .Where(a => a.CuentaId == cuenta.CuentaId)
             .OrderByDescending(a => a.CreadoEn)
-            .Select(a => new { a.Tipo, a.Monto, a.Descripcion, a.CreadoEn })
+            .Select(a => new HistorialResumen(a.Tipo, a.Monto, a.Descripcion, a.CreadoEn))
             .ToListAsync();
 
         return Results.Ok(new { titular = cuenta.Usuario?.Nombre, historial = auditorias });
     }
+
+    private sealed record HistorialResumen(string Tipo, decimal Monto, string Descripcion, DateTime CreadoEn);
 }

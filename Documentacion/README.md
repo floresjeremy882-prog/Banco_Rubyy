@@ -1,31 +1,29 @@
-# Documentación del Proyecto Banco Ruby
+# Documentación del proyecto Banco Ruby
 
 ## Resumen
-Este proyecto contiene dos aplicaciones separadas:
+Este proyecto tiene dos partes:
 
-- `Banco_Ruby`: servidor de la API bancaria con arquitectura vertical slice ligera.
-- `Usuario_Cliente`: cliente de consola que consume las APIs del servidor.
+- Banco_Ruby: es la API del banco.
+- Usuario_Cliente: es un programa de consola que usa esa API.
 
-La carpeta `Documentacion` conserva los diagramas originales.
+La carpeta Documentacion guarda los documentos y diagramas del proyecto.
 
-## Arquitectura
-El servidor usa una organización vertical slice simple:
+## Estructura simple
+El servidor está organizado de forma clara y sencilla:
 
-- `Common/`: tipos de dominio compartidos entre slices.
-- `Features/`: cada característica tiene su propia clase de slice.
-  - `AutenticacionSlice.cs`
-  - `DepositarSlice.cs`
-  - `RetirarSlice.cs`
-  - `HistorialSlice.cs`
+- Common/: modelos y peticiones compartidas.
+- Features/: cada operación tiene su propia parte.
+  - Autenticacion
+  - Operaciones
+  - Transferencias
+  - Historial
 
-Cada slice encapsula su lógica de negocio y expone una operación concreta para la API.
+## ¿Por qué está organizado así?
+- Cada función vive en su propio espacio.
+- Es más fácil entender y mantener el código.
+- El servidor expone rutas simples para cada acción.
 
-## ¿Por qué es vertical slice?
-- Cada función (consultar saldo, depositar, retirar, historial) vive en su propio slice.
-- No hay grandes capas tradicionales separadas por persistencia, servicio y controlador.
-- El servidor expone rutas mínimas que delegan directamente a los slices.
-
-## Uso
+## Cómo usarlo
 ### Ejecutar el servidor
 Desde PowerShell:
 
@@ -42,15 +40,15 @@ cd "c:\Users\jerenmi.flores\Downloads\Bnaco_Ruby\Bnaco_Ruby\Usuario_Cliente"
 dotnet run
 ```
 
-### Flujos disponibles
-- `Consultar saldo`
-- `Depositar`
-- `Retirar`
-- `Historial`
+### Opciones disponibles
+- Consultar saldo
+- Depositar
+- Retirar
+- Transferir
+- Ver historial
 
 ## Documentos incluidos
-- `diagrama_alto_nivel.png`
-- `diagrama_componentes.png`
-- `diagrama_dependencia.png`
-- `Reglas_Del_Negocio`
-- `vertical-slice.md`
+- Reglas_Del_Negocio
+- vertical-slice.md
+- interceptor_transferencia.md
+- archivos con la explicación general del proyecto

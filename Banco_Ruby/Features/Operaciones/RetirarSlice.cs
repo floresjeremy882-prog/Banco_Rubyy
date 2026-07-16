@@ -41,7 +41,7 @@ public static class RetirarSlice
             NumeroCuenta = cuenta.NumeroCuenta,
             Tipo = "Retiro",
             Monto = request.Monto,
-            Descripcion = $"Retiro de {request.Monto:N2}",
+            Descripcion = $"Se debitó de la cuenta ${request.Monto:N2}.",
             CreadoEn = DateTime.UtcNow
         });
 

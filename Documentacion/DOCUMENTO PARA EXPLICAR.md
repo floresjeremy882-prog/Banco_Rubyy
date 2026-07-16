@@ -1,202 +1,117 @@
-# DOCUMENTO PARA EXPLICAR
+# Documento para explicar
 
-Este documento explica archivo por archivo qué hace el código del proyecto y cómo se relacionan los componentes.
+Este documento explica de forma simple qué hace cada parte del proyecto y cómo se relacionan.
 
-## 1. Arquitectura general
+## 1. Idea general
 
-El servidor usa una arquitectura **vertical slice** ligera:
+El servidor usa una estructura simple por funciones:
 
-- Cada caso de uso es una pieza independiente del sistema.
-- Las operaciones bancarias no se agrupan en capas tradicionales (controlador/servicio/repo).
-- Se sigue un patrón donde cada slice contiene su propia lógica de negocio.
+- Cada caso de uso está separado.
+- Las operaciones bancarias no se agrupan en capas muy complejas.
+- Cada parte del sistema tiene una tarea clara.
 
-## 2. Archivo por archivo
+## 2. Archivos importantes
 
-### 2.1 `Banco_Ruby/Banco_Ruby/Program.cs`
+### Program.cs
 
-- Punto de entrada de la aplicación.
-- Configura `WebApplicationBuilder` y registra servicios en DI.
-- Registra `BancoRubyDbContext` para PostgreSQL.
-- Registra `InMemoryEventBus` como `IEventBus` y `IHostedService`.
-- Registra `IBankService` y `ITransferInterceptor`.
-- Registra `AccountAuthorizationFilter`.
-- Define rutas minimal API para:
-  - `/health`
-  - `/saldo/{numeroCuenta}`
-  - `/deposito`
-  - `/retiro`
-  - `/transferencia`
-  - `/historial/{numeroCuenta}`
-  - rutas de compatibilidad para el cliente `Usuario_Cliente`.
-- Cada endpoint delega al servicio `BankService` y usa `FromResult(...)` para devolver respuestas HTTP claras.
+- Es el punto de entrada de la app.
+- Registra servicios y define las rutas.
+- Aquí se configuran saldo, depósito, retiro, transferencia e historial.
 
-### 2.2 `Banco_Ruby/Banco_Ruby/BancoRubyDbContext.cs`
+### BancoRubyDbContext.cs
 
-- Define la clase `BancoRubyDbContext` que hereda de `DbContext`.
-- Expone los `DbSet` para `Usuarios`, `Cuentas` y `Auditoria`.
-- Configura el mapeo de tablas y columnas de PostgreSQL en `OnModelCreating`.
-- Define las relaciones:
-  - `Usuario` → `Cuentas`
-  - `Cuenta` → `Auditorias`
+- Define las tablas y relaciones de usuarios, cuentas y auditoría.
+- Conecta la app con PostgreSQL.
 
-### 2.3 `Banco_Ruby/Banco_Ruby/Common/Cuenta.cs`
+### Common/Cuenta.cs
 
-- Define entidades de dominio del sistema:
-  - `Usuario`
-  - `Cuenta`
-  - `Auditoria`
-- Cada entidad contiene propiedades primarias, relaciones de navegación y campos de auditoría.
-- Es el modelo de datos compartido que usa Entity Framework y la lógica de negocio.
+- Guarda los modelos del sistema.
+- Aquí están las clases de usuario, cuenta y auditoría.
 
-### 2.4 `Banco_Ruby/Banco_Ruby/Common/Requests.cs`
+### Common/Requests.cs
 
-- Define los DTO de entrada para las operaciones API:
-  - `DepositoRequest`
-  - `RetiroRequest`
-  - `TransferenciaRequest`
-- Son tipos inmutables y simples, usados por los endpoints y el servicio.
+- Define las peticiones que llegan desde el cliente.
+- Ejemplos: depósito, retiro y transferencia.
 
-### 2.5 `Banco_Ruby/Banco_Ruby/Common/DomainEvents.cs`
+### Common/DomainEvents.cs
 
-- Define el modelo de eventos de dominio y el bus de eventos:
-  - `IDomainEvent`
-  - `AuditoriaEvent`
-  - `PagoCompletadoEvent`
-  - `IEventBus`
-  - `InMemoryEventBus`
-- `InMemoryEventBus` usa `Channel<IDomainEvent>` para procesar eventos en segundo plano.
-- Esto desacopla la publicación de eventos de la ejecución principal de las operaciones.
+- Define los eventos del sistema.
+- Sirve para registrar acciones como auditoría o notificaciones.
 
-### 2.6 `Banco_Ruby/Banco_Ruby/Features/Result.cs`
+### Features/Operaciones/BankService.cs
 
-- Define `OperationResult<T>`.
-- Encapsula el resultado de una operación con:
-  - `IsSuccess`
-  - `IsFailure`
-  - `Value`
-  - `Error`
-  - `StatusCode`
-- Proporciona métodos de fábrica:
-  - `Ok(...)`
-  - `BadRequest(...)`
-  - `NotFound(...)`
-  - `Fail(...)`
-- Permite manejar errores de negocio sin lanzar excepciones.
+- Es el corazón de la lógica bancaria.
+- Aquí se valida saldo, se hacen depósitos, retiros y transferencias.
+- También se consulta el historial.
 
-### 2.7 `Banco_Ruby/Banco_Ruby/Features/Responses.cs`
+### Features/Operaciones/DepositarSlice.cs
 
-- Define DTOs de salida utilizados por el servicio:
-  - `SaldoResponse`
-  - `OperacionResponse`
-  - `TransferenciaResponse`
-  - `HistorialItem`
-  - `HistorialResponse`
-- Permite devolver datos estructurados a los clientes HTTP.
+- Maneja la parte de depósito.
+- Recibe la petición, la envía al servicio y devuelve la respuesta.
 
-### 2.8 `Banco_Ruby/Banco_Ruby/Features/AccountAuthorizationFilter.cs`
+### Features/Operaciones/RetirarSlice.cs
 
-- Implementa un filtro de endpoint `IEndpointFilter`.
-- Extrae números de cuenta de los argumentos del endpoint.
-- Verifica en la base de datos que las cuentas existan y estén activas.
-- Si la validación falla, devuelve `Results.NotFound(...)` sin ejecutar el servicio.
-- Esto es la implementación AOP del proyecto: una validación transversal aplicada antes de la lógica de negocio.
+- Hace lo mismo para el retiro.
 
-### 2.9 `Banco_Ruby/Banco_Ruby/Features/ITransferInterceptor.cs`
+### Features/Historial/HistorialSlice.cs
 
-- Define la interfaz `ITransferInterceptor`.
-- Este archivo declara el contrato para interceptar transferencias.
-- Permite conectar lógica externa antes de ejecutar la transferencia real.
+- Devuelve el historial de una cuenta.
 
-### 2.10 `Banco_Ruby/Banco_Ruby/Features/DefaultTransferInterceptor.cs`
+### Features/Autenticacion/AccountAuthorizationFilter.cs
 
-- Implementa `ITransferInterceptor` con un comportamiento neutro.
-- Es un placeholder que permite al sistema iniciar sin un interceptor externo.
-- Si hay un interceptor concreto, se reemplaza en DI.
+- Valida que la cuenta exista y esté activa antes de seguir.
+- Es una protección general para varias rutas.
 
-### 2.11 `Banco_Ruby/Banco_Ruby/Features/BankService.cs`
+### Features/Transferencias/ITransferInterceptor.cs y DefaultTransferInterceptor.cs
 
-- Núcleo de la lógica bancaria:
-  - `ConsultarSaldoAsync`
-  - `DepositarAsync`
-  - `RetirarAsync`
-  - `TransferirAsync`
-  - `ObtenerHistorialAsync`
-- Usa `OperationResult<T>` para controlar errores de negocio.
-- Valida saldos y reglas antes de aplicar cambios.
-- Invoca `ITransferInterceptor` antes de ejecutar transferencias.
-- Publica eventos de dominio en `IEventBus` después de operaciones exitosas.
-- Maneja la consulta del historial y la conversión de datos a DTOs.
+- Permiten extender o controlar el comportamiento de las transferencias.
 
-### 2.12 `Banco_Ruby/Usuario_Cliente/Program.cs`
+### Features/Transferencias/TransferirSlice.cs
 
-- Inicializa el cliente de consola.
-- Lee la variable `BANK_API_BASE_URL` o usa `http://localhost:5000`.
-- Crea un `CajeroApiClient` y un `CajeroConsole`.
-- Ejecuta la consola interactiva.
+- Maneja la ruta de transferencia.
+- Llama al servicio y devuelve la respuesta.
 
-### 2.13 `Banco_Ruby/Usuario_Cliente/Services/CajeroApiClient.cs`
+### Usuario_Cliente/Program.cs
 
-- Cliente HTTP que consume los endpoints del servidor.
-- Métodos:
-  - `AutenticarAsync`
-  - `ConsultarSaldoAsync`
-  - `DepositarAsync`
-  - `RetirarAsync`
-  - `TransferirAsync`
-  - `ObtenerHistorialAsync`
-- Usa `HttpClient` y `PostAsJsonAsync` para enviar datos.
-- Devuelve respuestas en texto para que el cliente las muestre.
+- Inicia el cliente de consola.
+- Conecta con la API del servidor.
 
-### 2.14 `Banco_Ruby/Usuario_Cliente/Services/CajeroConsole.cs`
+### Usuario_Cliente/Services/CajeroApiClient.cs
 
-- Interfaz de usuario de consola.
-- Solicita datos al usuario y llama a `CajeroApiClient`.
-- Muestra resultados, errores y menús.
-- Contiene la navegación entre opciones de saldo, depósito, retiro, transferencia e historial.
+- Envía las peticiones al servidor.
+- Usa HttpClient para comunicarse con la API.
 
-## 3. Conexiones importantes entre archivos
+### Usuario_Cliente/Services/CajeroConsole.cs
 
-- `Program.cs` → registra servicios y define endpoints.
-- Endpoints -> `BankService` para toda la lógica bancaria.
-- `BankService` → usa `BancoRubyDbContext` para acceso a datos.
-- `BankService` → usa `ITransferInterceptor` para transferencias.
-- `BankService` → publica eventos a `IEventBus`.
-- `AccountAuthorizationFilter` → protege endpoints aplicando validación transversal.
-- `Usuario_Cliente` → consume la API del servidor.
+- Muestra un menú simple al usuario.
+- Recoge datos y llama al cliente HTTP.
 
-## 4. Conceptos clave para explicar
+## 3. Cómo se conectan las partes
 
-### 4.1 Vertical slice
+- Program.cs define las rutas.
+- Las rutas llaman al servicio principal.
+- El servicio usa el contexto de base de datos.
+- También puede publicar eventos.
+- El cliente consume la API y muestra resultados.
 
-- El proyecto está organizado por funcionalidades, no por capas.
-- Cada operación es un slice independiente.
-- Esto hace el código más fácil de entender y extender.
+## 4. Conceptos importantes
 
-### 4.2 AOP
+### Estructura por funciones
 
-- El filtro `AccountAuthorizationFilter` valida cuentas antes de ejecutar la lógica.
-- Se aplica a múltiples endpoints sin copiar la misma validación.
+- El proyecto está pensado para ser fácil de entender.
+- Cada función tiene su parte propia.
 
-### 4.3 Resultados funcionales
+### Validaciones
 
-- `OperationResult<T>` permite separar éxito y error.
-- Evita mezclar lógica de control con manejo de excepciones.
+- Antes de hacer una operación, se revisa que todo sea correcto.
+- Esto ayuda a evitar errores.
 
-### 4.4 Event bus
+### Eventos
 
-- `InMemoryEventBus` procesa eventos en segundo plano.
-- Desacopla la lógica principal de la auditoría y notificaciones.
+- Algunos cambios generan eventos para auditoría y seguimiento.
 
-## 5. Dónde se usa cada concepto
+## 5. Recomendación para presentar
 
-- Vertical slice: `Program.cs`, `Features/BankService.cs`, `Features/AccountAuthorizationFilter.cs`.
-- AOP: `Features/AccountAuthorizationFilter.cs`.
-- Funcional/ROP: `Features/Result.cs`, `Features/BankService.cs`.
-- Eventos: `Common/DomainEvents.cs`, `Features/BankService.cs`.
-
-## 6. Recomendación para presentar
-
-- Explica primero la estructura general del proyecto.
-- Menciona que el servidor es vertical slice.
-- Luego detalla cómo funciona una transferencia y cómo el interceptor entra en el flujo.
-- Finaliza con el cliente de consola como consumidor de la API.
+- Empieza explicando la idea general del proyecto.
+- Después menciona cómo funciona una operación básica.
+- Luego explica el cliente de consola como la parte que usa la API.

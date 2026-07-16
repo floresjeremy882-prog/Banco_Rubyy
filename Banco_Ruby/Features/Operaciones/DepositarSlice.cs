@@ -29,7 +29,7 @@ public static class DepositarSlice
             NumeroCuenta = cuenta.NumeroCuenta,
             Tipo = "Depósito",
             Monto = request.Monto,
-            Descripcion = $"Depósito de {request.Monto:N2}",
+            Descripcion = $"Se acreditó a la cuenta con ${request.Monto:N2}.",
             CreadoEn = DateTime.UtcNow
         });
 

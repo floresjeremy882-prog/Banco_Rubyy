@@ -320,6 +320,7 @@ public class CajeroConsole
 
             table.AddColumn(new TableColumn("[bold]#[/]").Centered());
             table.AddColumn(new TableColumn("[bold]Movimiento[/]").Centered());
+            table.AddColumn(new TableColumn("[bold]Descripción[/]").LeftAligned());
             table.AddColumn(new TableColumn("[bold]Valor[/]").RightAligned());
             table.AddColumn(new TableColumn("[bold]Fecha[/]").Centered());
             table.AddColumn(new TableColumn("[bold]Hora[/]").Centered());
@@ -349,27 +350,28 @@ public class CajeroConsole
 
                 DateTime fechaLocal = fechaRaw.ToLocalTime();
 
-                // Color: rojo=retiro, verde=depósito, amarillo=transferencia
                 string color = tipo.ToLowerInvariant() switch
                 {
-                        string t when t.Contains("withdrawal") || t.Contains("retiro")  => "red",
-                        string t when t.Contains("deposit")    || t.Contains("dep")     => "green",
-                        string t when t.Contains("transfer")                            => "yellow",
-                    _                                                            => "white"
+                    string t when t.Contains("withdrawal") || t.Contains("retiro") => "red",
+                    string t when t.Contains("deposit") || t.Contains("dep") => "green",
+                    string t when t.Contains("transferencia salida") || t.Contains("transferencia enviada") => "red",
+                    string t when t.Contains("transferencia entrada") || t.Contains("transferencia recibida") => "green",
+                    _ => "white"
                 };
 
-                // Etiqueta legible en español
                 string etiqueta = tipo.ToLowerInvariant() switch
                 {
                     string t when t.Contains("withdrawal") || t.Contains("retiro") => "Retiro",
-                    string t when t.Contains("deposit")    || t.Contains("dep")    => "Depósito",
-                    string t when t.Contains("transfer")                           => "Transferencia",
-                    _                                                           => Markup.Escape(tipo)
+                    string t when t.Contains("deposit") || t.Contains("dep") => "Depósito",
+                    string t when t.Contains("transferencia salida") || t.Contains("transferencia enviada") => "Transferencia enviada",
+                    string t when t.Contains("transferencia entrada") || t.Contains("transferencia recibida") => "Transferencia recibida",
+                    _ => Markup.Escape(tipo)
                 };
 
                 table.AddRow(
                     $"[{color}]{numero}[/]",
                     $"[{color}]{etiqueta}[/]",
+                    $"[{color}]{Markup.Escape(desc)}[/]",
                     $"[{color}]${monto:N2}[/]",
                     $"[{color}]{fechaLocal:dd/MM/yyyy}[/]",
                     $"[{color}]{fechaLocal:HH:mm:ss}[/]"
@@ -380,7 +382,7 @@ public class CajeroConsole
 
             AnsiConsole.Write(table);
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine("[green]●[/] Depósito   [red]●[/] Retiro   [yellow]●[/] Transferencia");
+            AnsiConsole.MarkupLine("[green]●[/] Depósito / Transferencia recibida   [red]●[/] Retiro / Transferencia enviada");
         }
         catch
         {

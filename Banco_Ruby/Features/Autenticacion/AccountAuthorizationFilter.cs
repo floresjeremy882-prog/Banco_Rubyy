@@ -22,7 +22,7 @@ public sealed class AccountAuthorizationFilter : IEndpointFilter
 
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        var accountNumbers = GetAccountNumbers(context.Arguments);
+        IReadOnlyCollection<string> accountNumbers = GetAccountNumbers(context.Arguments);
         if (accountNumbers.Count > 0)
         {
             foreach (string numeroCuenta in accountNumbers.Distinct())
@@ -40,7 +40,7 @@ public sealed class AccountAuthorizationFilter : IEndpointFilter
 
     private static IReadOnlyCollection<string> GetAccountNumbers(IList<object?> arguments)
     {
-        var accountNumbers = new List<string>();
+        List<string> accountNumbers = new List<string>();
 
         foreach (object? arg in arguments)
         {

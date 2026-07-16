@@ -42,9 +42,9 @@ public static class TransferirSlice
         {
             CuentaId = origen.CuentaId,
             NumeroCuenta = origen.NumeroCuenta,
-            Tipo = "Transferencia salida",
+            Tipo = "Transferencia enviada",
             Monto = request.Monto,
-            Descripcion = $"Transferencia de {request.Monto:N2} a {destino.NumeroCuenta}",
+            Descripcion = $"Se envió transferencia de ${request.Monto:N2} a la cuenta {destino.NumeroCuenta}.",
             CreadoEn = DateTime.UtcNow
         });
 
@@ -52,9 +52,9 @@ public static class TransferirSlice
         {
             CuentaId = destino.CuentaId,
             NumeroCuenta = destino.NumeroCuenta,
-            Tipo = "Transferencia entrada",
+            Tipo = "Transferencia recibida",
             Monto = request.Monto,
-            Descripcion = $"Transferencia de {request.Monto:N2} desde {origen.NumeroCuenta}",
+            Descripcion = $"Se recibió transferencia de la cuenta {origen.NumeroCuenta} por ${request.Monto:N2}.",
             CreadoEn = DateTime.UtcNow
         });
 
