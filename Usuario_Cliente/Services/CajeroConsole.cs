@@ -27,12 +27,10 @@ public class CajeroConsole
             AnsiConsole.Clear();
             DrawTitle();
 
-            string option = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("Seleccione una opción:")
-                    .AddChoices("Insertar tarjeta", "Salir"));
+            string[] mainOptions = { "Insertar tarjeta", "Salir" };
+            int mainSelection = PromptMenuOption("Seleccione una opción:", mainOptions);
 
-            if (option == "Salir")
+            if (mainSelection == 1)
             {
                 AnsiConsole.MarkupLine("[green]Hasta luego.[/]");
                 return;
@@ -82,29 +80,27 @@ public class CajeroConsole
             AnsiConsole.Clear();
             DrawSessionHeader();
 
-            string option = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("Seleccione una opción:")
-                    .AddChoices("Consultar saldo", "Retirar efectivo", "Depositar efectivo", "Consultar movimientos", "Transferir dinero", "Retirar tarjeta"));
+            string[] options = { "Consultar saldo", "Retirar efectivo", "Depositar efectivo", "Consultar movimientos", "Transferir dinero", "Retirar tarjeta" };
+            int selected = PromptMenuOption("Seleccione una opción:", options);
 
-            switch (option)
+            switch (selected)
             {
-                case "Consultar saldo":
+                case 0:
                     await ConsultarSaldoAsync();
                     break;
-                case "Depositar efectivo":
-                    await DepositarAsync();
-                    break;
-                case "Retirar efectivo":
+                case 1:
                     await RetirarAsync();
                     break;
-                case "Consultar movimientos":
+                case 2:
+                    await DepositarAsync();
+                    break;
+                case 3:
                     await MostrarHistorialAsync();
                     break;
-                case "Transferir dinero":
+                case 4:
                     await TransferirAsync();
                     break;
-                case "Retirar tarjeta":
+                case 5:
                     return;
             }
 
@@ -161,6 +157,18 @@ public class CajeroConsole
             : $"RUBY-{accountNumber[^4..]}";
     }
 
+    private static int PromptMenuOption(string promptMessage, string[] options)
+    {
+        var prompt = new SelectionPrompt<string>()
+            .Title(promptMessage)
+            .PageSize(10)
+            .MoreChoicesText("<Seleccione una opción adicional>")
+            .AddChoices(options);
+
+        string selected = AnsiConsole.Prompt(prompt);
+        return Array.IndexOf(options, selected);
+    }
+
     private async Task ConsultarSaldoAsync()
     {
         string result = await _apiClient.ConsultarSaldoAsync(_cuenta);
@@ -212,16 +220,7 @@ public class CajeroConsole
             return;
         }
 
-        const decimal comision = 0.41m;
-        if (monto <= comision)
-        {
-            AnsiConsole.MarkupLine($"[red]El monto debe ser mayor que la comisión de ${comision:N2}.[/]");
-            return;
-        }
-
-        decimal neto = monto - comision;
-        AnsiConsole.MarkupLine($"[yellow]Se cobrará una comisión de ${comision:N2}. El monto neto acreditado será ${neto:N2}.[/]");
-        if (!AnsiConsole.Confirm("¿Desea continuar?"))
+        if (!AnsiConsole.Confirm("¿Desea continuar con el depósito?"))
         {
             AnsiConsole.MarkupLine("[grey]Depósito cancelado.[/]");
             return;
@@ -267,7 +266,6 @@ public class CajeroConsole
                 AnsiConsole.MarkupLine($"[grey]Respuesta del servidor:[/] {Markup.Escape(result)}");
 
             AnsiConsole.MarkupLine($"[bold]Monto depositado:[/] [yellow]${monto:N2}[/]");
-            AnsiConsole.MarkupLine($"[bold]Comisión:[/] [yellow]${comision:N2}[/]");
             AnsiConsole.MarkupLine($"[bold]Saldo actual:[/] [yellow]${saldo:N2}[/]");
         }
         catch (JsonException)
@@ -475,6 +473,15 @@ public class CajeroConsole
 
     private async Task TransferirAsync()
     {
+        string[] transferOptions = { "Continuar", "Regresar al menú" };
+        int transferSelection = PromptMenuOption("Transferencia: elija una opción:", transferOptions);
+
+        if (transferSelection == 1)
+        {
+            AnsiConsole.MarkupLine("[grey]Transferencia cancelada. Regresando al menú.[/]");
+            return;
+        }
+
         string destino = AnsiConsole.Ask<string>("Cuenta destino:");
         if (string.IsNullOrWhiteSpace(destino))
         {

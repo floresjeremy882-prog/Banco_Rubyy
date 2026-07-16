@@ -17,7 +17,13 @@ La idea es ofrecer funciones básicas como ver saldo, depositar, retirar, transf
 - Usuario_Cliente: cliente para probar la API.
 - Documentacion: guías, diagramas y explicaciones.
 
-### 2.2 Partes del servidor
+### 2.2 Librerías y dependencias usadas
+
+- `Microsoft.EntityFrameworkCore` 8.0.0: ORM para acceso a datos en el backend.
+- `Npgsql.EntityFrameworkCore.PostgreSQL` 8.0.0: proveedor PostgreSQL para Entity Framework.
+- `Spectre.Console` 0.47.0: interfaz de consola para el cliente de usuario.
+
+### 2.3 Partes del servidor
 
 Dentro de Banco_Ruby:
 
