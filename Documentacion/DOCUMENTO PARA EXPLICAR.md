@@ -33,43 +33,33 @@ El servidor usa una estructura simple por funciones:
 - Define las peticiones que llegan desde el cliente.
 - Ejemplos: depósito, retiro y transferencia.
 
-### Common/DomainEvents.cs
-
-- Define los eventos del sistema.
-- Sirve para registrar acciones como auditoría o notificaciones.
-
-### Features/Operaciones/BankService.cs
-
-- Es el corazón de la lógica bancaria.
-- Aquí se valida saldo, se hacen depósitos, retiros y transferencias.
-- También se consulta el historial.
-
 ### Features/Operaciones/DepositarSlice.cs
 
 - Maneja la parte de depósito.
-- Recibe la petición, la envía al servicio y devuelve la respuesta.
+- Aplica comisión de $0.41.
+- Registra auditoría con información clara.
 
 ### Features/Operaciones/RetirarSlice.cs
 
-- Hace lo mismo para el retiro.
+- Maneja la parte de retiro.
+- Aplica comisión de $0.41.
+- Registra auditoría con información clara.
 
 ### Features/Historial/HistorialSlice.cs
 
 - Devuelve el historial de una cuenta.
+- Proyecta los movimientos con tipo, monto, descripción y fecha.
 
 ### Features/Autenticacion/AccountAuthorizationFilter.cs
 
 - Valida que la cuenta exista y esté activa antes de seguir.
 - Es una protección general para varias rutas.
 
-### Features/Transferencias/ITransferInterceptor.cs y DefaultTransferInterceptor.cs
-
-- Permiten extender o controlar el comportamiento de las transferencias.
-
 ### Features/Transferencias/TransferirSlice.cs
 
 - Maneja la ruta de transferencia.
-- Llama al servicio y devuelve la respuesta.
+- Valida cuentas origen y destino.
+- Ajusta saldos directamente y registra auditoría para origen y destino.
 
 ### Usuario_Cliente/Program.cs
 
@@ -89,9 +79,8 @@ El servidor usa una estructura simple por funciones:
 ## 3. Cómo se conectan las partes
 
 - Program.cs define las rutas.
-- Las rutas llaman al servicio principal.
-- El servicio usa el contexto de base de datos.
-- También puede publicar eventos.
+- Las rutas llaman directamente a un slice.
+- El slice usa el contexto de base de datos.
 - El cliente consume la API y muestra resultados.
 
 ## 4. Conceptos importantes

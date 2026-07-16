@@ -17,7 +17,8 @@ public class CajeroApiClient
         try
         {
             HttpResponseMessage res = await _http.PostAsJsonAsync($"/api/cuentas/{numero}/autenticar", new { Pin = pin });
-            return await res.Content.ReadAsStringAsync();
+            string content = await res.Content.ReadAsStringAsync();
+            return res.IsSuccessStatusCode ? content : $"ERROR: {content}";
         }
         catch (Exception ex)
         {
@@ -30,7 +31,8 @@ public class CajeroApiClient
         try
         {
             HttpResponseMessage res = await _http.GetAsync($"/api/cuentas/{numero}/saldo");
-            return await res.Content.ReadAsStringAsync();
+            string content = await res.Content.ReadAsStringAsync();
+            return res.IsSuccessStatusCode ? content : $"ERROR: {content}";
         }
         catch (Exception ex)
         {
@@ -43,7 +45,8 @@ public class CajeroApiClient
         try
         {
             HttpResponseMessage res = await _http.PostAsJsonAsync($"/api/cuentas/{numero}/depositar", new { Monto = monto });
-            return await res.Content.ReadAsStringAsync();
+            string content = await res.Content.ReadAsStringAsync();
+            return res.IsSuccessStatusCode ? content : $"ERROR: {content}";
         }
         catch (Exception ex)
         {
@@ -56,7 +59,8 @@ public class CajeroApiClient
         try
         {
             HttpResponseMessage res = await _http.PostAsJsonAsync($"/api/cuentas/{numero}/retirar", new { Monto = monto });
-            return await res.Content.ReadAsStringAsync();
+            string content = await res.Content.ReadAsStringAsync();
+            return res.IsSuccessStatusCode ? content : $"ERROR: {content}";
         }
         catch (Exception ex)
         {
@@ -69,7 +73,8 @@ public class CajeroApiClient
         try
         {
             HttpResponseMessage res = await _http.PostAsJsonAsync($"/api/cuentas/{numeroOrigen}/transferir", new { CuentaDestino = cuentaDestino, Banco = bancoDestino, Monto = monto, Concepto = concepto });
-            return await res.Content.ReadAsStringAsync();
+            string content = await res.Content.ReadAsStringAsync();
+            return res.IsSuccessStatusCode ? content : $"ERROR: {content}";
         }
         catch (Exception ex)
         {
@@ -82,7 +87,8 @@ public class CajeroApiClient
         try
         {
             HttpResponseMessage res = await _http.GetAsync($"/api/cuentas/{numero}/historial");
-            return await res.Content.ReadAsStringAsync();
+            string content = await res.Content.ReadAsStringAsync();
+            return res.IsSuccessStatusCode ? content : $"ERROR: {content}";
         }
         catch (Exception ex)
         {

@@ -13,13 +13,13 @@ public static class TransferirSlice
             return Results.BadRequest(new { error = "La cuenta origen y destino no pueden ser la misma." });
         }
 
-        Cuenta origen = await db.Cuentas.FirstOrDefaultAsync(c => c.NumeroCuenta == request.NumeroCuentaOrigen && c.Estado);
+        Cuenta? origen = await db.Cuentas.FirstOrDefaultAsync(c => c.NumeroCuenta == request.NumeroCuentaOrigen && c.Estado);
         if (origen is null)
         {
             return Results.NotFound(new { error = "Cuenta origen no encontrada o inactiva." });
         }
 
-        Cuenta destino = await db.Cuentas.FirstOrDefaultAsync(c => c.NumeroCuenta == request.NumeroCuentaDestino && c.Estado);
+        Cuenta? destino = await db.Cuentas.FirstOrDefaultAsync(c => c.NumeroCuenta == request.NumeroCuentaDestino && c.Estado);
         if (destino is null)
         {
             return Results.NotFound(new { error = "Cuenta destino no encontrada o inactiva." });

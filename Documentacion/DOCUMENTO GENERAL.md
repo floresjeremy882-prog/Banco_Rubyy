@@ -21,24 +21,24 @@ La idea es ofrecer funciones básicas como ver saldo, depositar, retirar, transf
 
 Dentro de Banco_Ruby:
 
-- Common/: modelos, eventos y peticiones compartidas.
-- Features/: lógica de negocio por área.
+- Common/: modelos y peticiones compartidas.
+- Features/: lógica de negocio por caso de uso.
   - Autenticacion: validación de cuentas.
-  - Operaciones: saldo, depósito, retiro y resultados.
-  - Transferencias: transferencias e interceptor.
+  - Operaciones: depósito, retiro y respuestas de operación.
+  - Transferencias: lógica de transferencia.
   - Historial: consultas del historial.
 - Program.cs: define las rutas y registra servicios.
 - BancoRubyDbContext.cs: acceso a datos con Entity Framework y PostgreSQL.
 
 ## 3. Cómo funciona el servidor
 
-El servidor usa una estructura simple y directa:
+El servidor usa una estructura simple y directa con vertical slice:
 
 - Cada operación tiene su parte propia.
-- Los endpoints llaman al servicio principal.
-- El servicio valida datos y reglas antes de hacer cambios.
-- Si todo está bien, se actualiza el saldo o se consulta información.
-- Para transferencias, se usa un interceptor antes de aplicar los cambios.
+- Los endpoints llaman directamente a un slice.
+- Cada slice valida los datos y aplica las reglas correspondientes.
+- Si todo está bien, se actualiza el saldo o se devuelve la información.
+- Las transferencias se procesan directamente en `TransferirSlice`.
 
 ## 4. Flujo de una petición
 
@@ -47,7 +47,7 @@ El servidor usa una estructura simple y directa:
 3. Se llama al servicio para hacer la operación.
 4. El servicio revisa reglas y datos.
 5. Se guarda el cambio o se devuelve la información.
-6. Si la operación fue correcta, se publican eventos para auditoría.
+- Si la operación fue correcta, se guarda auditoría directamente en la base de datos.
 
 ## 5. Componentes clave
 
@@ -66,19 +66,15 @@ El servidor usa una estructura simple y directa:
 
 - Cuenta.cs: modelos de dominio.
 - Requests.cs: peticiones de entrada.
-- DomainEvents.cs: eventos y bus de eventos.
 
-### Features/Operaciones/BankService.cs
+### Features/Operaciones
 
-Es el corazón del sistema.
+Cada slice de `Features/Operaciones` maneja una operación concreta como depósito o retiro.
 
-- Consultar saldo
-- Depositar
-- Retirar
-- Transferir
-- Ver historial
+- `DepositarSlice.cs`: depósito con comisión y auditoría.
+- `RetirarSlice.cs`: retiro con comisión y auditoría.
 
-Usa un resultado de operación para manejar errores de forma clara.
+Usa respuestas directas de los slices para manejar errores y resultados.
 
 ### Features/Autenticacion/AccountAuthorizationFilter.cs
 
@@ -109,4 +105,5 @@ dotnet run
 - El proyecto es simple y fácil de extender.
 - La lógica de negocio está bien separada en partes claras.
 - Hay validaciones antes de ejecutar operaciones.
-- El sistema usa eventos para auditoría y seguimiento.
+- El servidor usa slices verticales y evita una capa de servicio única.
+- Depósitos y retiros aplican comisión y registran auditoría con descripciones claras.

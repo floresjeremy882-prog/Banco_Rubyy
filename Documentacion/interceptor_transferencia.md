@@ -1,6 +1,9 @@
 # Conectar un interceptor de transferencia
 
-Este documento explica cómo conectar un interceptor de transferencia en el proyecto `BancoRuby` cuando ya tienes la implementación lista.
+> Nota: la implementación actual del backend no utiliza un interceptor de transferencia ni `BankService`.
+> Este documento explica un enfoque legado que ya no está presente en el código actual.
+
+El código actual usa slices verticales directos y no incluye `ITransferInterceptor` ni la clase `BankService`.
 
 ## 1. Archivos clave
 

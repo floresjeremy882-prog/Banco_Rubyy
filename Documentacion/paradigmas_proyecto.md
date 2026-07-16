@@ -1,95 +1,90 @@
 # Paradigmas en el proyecto BancoRuby
 
-Esta documentación describe dónde y cómo se implementan los paradigmas del diagrama en el proyecto actual.
+Esta documentación describe dónde y cómo se implementan los paradigmas del proyecto actual.
 
-## 1. Carga Extrema [Reactivo]
+## 1. Arquitectura vertical slice
 
-- Estado: **Implementado de forma ligera**.
-- Dónde: `Banco_Ruby/Banco_Ruby/Banco_Ruby/Common/DomainEvents.cs` y `Program.cs`.
+- Estado: **Implementado directamente**.
+- Dónde: `Program.cs` y `Features/`.
 - Cómo funciona:
-  - El proyecto usa `InMemoryEventBus`, un bus de eventos interno basado en `Channel<T>` con un buffer acotado.
-  - Las operaciones de negocio publican eventos (`AuditoriaEvent`, `PagoCompletadoEvent`) usando `IEventBus.PublishAsync(...)`.
-  - El servicio en segundo plano `InMemoryEventBus` consume esos eventos de manera asíncrona y los procesa sin bloquear el flujo principal de la petición.
-- Beneficio: esto añade un comportamiento similar a backpressure y desacopla la persistencia de los eventos de auditoría de la ejecución inmediata de la transacción.
+  - Cada operación tiene un slice propio (`DepositarSlice`, `RetirarSlice`, `TransferirSlice`, `HistorialSlice`, `AutenticacionSlice`).
+  - `Program.cs` define rutas mínimas y delega la lógica al slice correspondiente.
+  - Cada slice recibe el `BancoRubyDbContext`, valida la petición y devuelve un `Results.*` adecuado.
+- Beneficio: claridad por caso de uso y menor acoplamiento entre operaciones.
 
 ## 2. Autorización [AOP]
 
 - Estado: **Implementado con filtro de endpoint**.
-- Dónde: `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/AccountAuthorizationFilter.cs` y `Program.cs`.
+- Dónde: `Features/AccountAuthorizationFilter.cs` y `Program.cs`.
 - Cómo funciona:
-  - Se registró `AccountAuthorizationFilter` como un `IEndpointFilter` en los endpoints que usan `IBankService`.
-  - Antes de ejecutar la lógica de negocio, el filtro lee los argumentos del endpoint y verifica si las cuentas existen y están activas en la base de datos.
-  - Si la cuenta no es válida, devuelve `Results.NotFound(...)` sin llamar al servicio.
-- Beneficio: permite validar cuentas de forma transversal sin repetir lógica dentro de cada método de negocio.
+  - `AccountAuthorizationFilter` valida que las cuentas existan y estén activas antes de ejecutar la operación.
+  - Si la cuenta no es válida, devuelve un error sin ejecutar el slice.
+- Beneficio: evita repetir validación de cuenta en cada slice.
 
-## 3. Reglas de Negocio [POO]
+## 3. Reglas de negocio [POO simplificado]
 
-- Estado: **Implementado de forma clara**.
-- Dónde: `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/BankService.cs`, `Banco_Ruby/Banco_Ruby/Common/Cuenta.cs`, `Banco_Ruby/Banco_Ruby/Common/Requests.cs`, `Banco_Ruby/Banco_Ruby/Common/DomainEvents.cs`.
+- Estado: **Implementado en slices y entidades de dominio**.
+- Dónde: `Features/Operaciones/DepositarSlice.cs`, `Features/Operaciones/RetirarSlice.cs`, `Features/Transferencias/TransferirSlice.cs`, `Common/Cuenta.cs`, `Common/Requests.cs`.
 - Cómo funciona:
-  - `BankService` encapsula toda la lógica de negocio bancaria en una clase concreta y consumible.
-  - Las entidades `Cuenta`, `Usuario`, `Auditoria` modelan el dominio y las relaciones del banco.
-  - El `DbContext` de Entity Framework (`BancoRubyDbContext`) mantiene el modelo de dominio y mapea las entidades a la base de datos.
-- Beneficio: separa claramente las reglas de negocio de la infraestructura de la API y mantiene un dominio expresivo.
+  - Las entidades `Cuenta`, `Usuario`, `Auditoria` modelan el dominio.
+  - El `DbContext` mantiene el acceso a datos.
+  - Los slices encapsulan reglas de negocio específicas.
+- Beneficio: mantiene la lógica bancaria clara sin introducir capas de servicio adicionales.
 
-## 4. Cálculo y Falla [Funcional + ROP]
+## 4. Comisiones y validaciones
 
-- Estado: **Implementado con `OperationResult<T>`**.
-- Dónde: `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/Result.cs` y `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/BankService.cs`.
+- Estado: **Implementado en los slices de depósito y retiro**.
+- Dónde: `DepositarSlice.cs`, `RetirarSlice.cs`.
 - Cómo funciona:
-  - `OperationResult<T>` representa éxito o fallo con un valor opcional y código HTTP asociado.
-  - Los métodos de `BankService` devuelven `OperationResult<T>` en lugar de lanzar excepciones para lógica de validación.
-  - Las validaciones (`ValidarMontoAsync`, `ValidarRetiroAsync`, `ValidarTransferenciaAsync`) retornan resultados de fallo o éxito que se encadenan manualmente.
-- Beneficio: mantiene la lógica de errores explícita y evita ramas de excepción mezcladas con la lógica normal.
+  - Ambos slices aplican una comisión fija de `$0.41`.
+  - El depósito acredita el neto y registra auditoría con descripción detallada.
+  - El retiro descuenta el total (`monto + comisión`) y registra auditoría con descripción clara.
+- Beneficio: la lógica de comisión es explicita y está cerca de la operación.
 
-## 5. Desacoplamiento [Eventos]
+## 5. Historial y auditoría
 
-- Estado: **Implementado como arquitectura de eventos internos**.
-- Dónde: `Banco_Ruby/Banco_Ruby/Banco_Ruby/Common/DomainEvents.cs`, `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/BankService.cs`.
+- Estado: **Implementado con registros directos en la tabla de auditoría**.
+- Dónde: `Features/Historial/HistorialSlice.cs`.
 - Cómo funciona:
-  - `BankService` publica eventos de dominio después de confirmar las operaciones sobre las cuentas.
-  - El bus de eventos en memoria procesa estos eventos de auditoría en segundo plano, creando registros de auditoría y simulando un flujo de eventos desacoplado.
-  - El evento `PagoCompletadoEvent` demuestra cómo se puede activar un evento de dominio independiente a partir de la operación de transferencia.
-- Beneficio: desacopla la acción del negocio (depósito/retirada/transferencia) del efecto secundario de auditoría, lo que facilita extender el sistema con nuevos handlers en el futuro.
+  - Cada operación crea un registro de auditoría en `db.Auditoria`.
+  - Historial proyecta esos registros para el cliente.
+- Beneficio: el historial muestra transacciones con tipo, monto, descripción y fecha.
 
 ## Resumen
 
 - Implementado en el proyecto:
-  - `Reactivo`: mediante un bus interno basado en `Channel<T>` y procesamiento asíncrono.
-  - `AOP`: usando filtro de endpoint (`AccountAuthorizationFilter`).
-  - `POO`: con `BankService`, entidades y `DbContext`.
-  - `Funcional + ROP`: con `OperationResult<T>` y validaciones encadenadas.
-  - `Eventos`: con publicación de eventos de dominio y procesamiento en segundo plano.
+  - `Vertical Slice`: con slices directos por operación.
+  - `AOP`: con filtro de endpoint para autorización de cuenta.
+  - `POO simplificado`: con entidades y `DbContext`.
+  - `Validaciones explícitas`: dentro de cada slice.
+  - `Auditoría directa`: insertando registros en la tabla de auditoría.
 
-## Archivos clave actualizados
+## Archivos clave actuales
 
 - `Banco_Ruby/Banco_Ruby/Banco_Ruby/Program.cs`
 - `Banco_Ruby/Banco_Ruby/Banco_Ruby/BancoRubyDbContext.cs`
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Common/DomainEvents.cs`
 - `Banco_Ruby/Banco_Ruby/Banco_Ruby/Common/Cuenta.cs`
 - `Banco_Ruby/Banco_Ruby/Banco_Ruby/Common/Requests.cs`
 - `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/AccountAuthorizationFilter.cs`
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/BankService.cs`
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/Result.cs`
+- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/Operaciones/DepositarSlice.cs`
+- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/Operaciones/RetirarSlice.cs`
+- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/Transferencias/TransferirSlice.cs`
+- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/Historial/HistorialSlice.cs`
 
 ## Flujo simplificado (pseudocódigo)
 
 1. El cliente llama a un endpoint en `Program.cs`.
-2. El `AccountAuthorizationFilter` valida la cuenta de forma transversal.
-3. El endpoint invoca `BankService`.
-4. `BankService` valida la operación con `OperationResult<T>`.
-5. Si la validación es exitosa, actualiza la cuenta y publica eventos (`AuditoriaEvent`, `PagoCompletadoEvent`).
-6. `InMemoryEventBus` procesa los eventos en segundo plano y escribe auditoría en la base de datos.
+2. El `AccountAuthorizationFilter` valida la cuenta.
+3. El endpoint invoca el slice adecuado.
+4. El slice valida la operación y actualiza la base de datos.
+5. Se devuelve un `Results.Ok(...)` o `Results.BadRequest(...)` según corresponda.
 
 ```text
 CLIENT -> Endpoint
    -> AccountAuthorizationFilter
-   -> BankService.ValidarCuenta()
-   -> BankService.ValidarReglas()
-   -> BankService.RealizarOperacion()
-   -> IEventBus.PublishAsync(event)
-EVENT BUS -> Procesar eventos en segundo plano
-   -> Guardar auditoría
+   -> Slice (Depositar, Retirar, Transferir, Historial)
+   -> DbContext actualiza datos y registra auditoría
+   -> Respuesta HTTP
 ```
 
 ---

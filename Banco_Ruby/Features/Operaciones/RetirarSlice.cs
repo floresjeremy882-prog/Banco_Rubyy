@@ -6,9 +6,11 @@ namespace BancoCenit.Features;
 
 public static class RetirarSlice
 {
+    private const decimal COMISION = 0.41m;
+
     public static async Task<object> RetirarAsync(RetiroRequest request, BancoRubyDbContext db)
     {
-        Cuenta cuenta = await db.Cuentas.FirstOrDefaultAsync(c => c.NumeroCuenta == request.NumeroCuenta && c.Estado);
+        Cuenta? cuenta = await db.Cuentas.FirstOrDefaultAsync(c => c.NumeroCuenta == request.NumeroCuenta && c.Estado);
         if (cuenta is null)
         {
             return Results.NotFound(new { error = "Cuenta no encontrada o inactiva." });
@@ -29,23 +31,24 @@ public static class RetirarSlice
             return Results.BadRequest(new { error = "El retiro excede el límite de 500." });
         }
 
-        if (request.Monto > cuenta.Saldo)
+        decimal totalDebitado = request.Monto + COMISION;
+        if (totalDebitado > cuenta.Saldo)
         {
             return Results.BadRequest(new { error = "Fondos insuficientes." });
         }
 
-        cuenta.Saldo -= request.Monto;
+        cuenta.Saldo -= totalDebitado;
         db.Auditoria.Add(new Auditoria
         {
             CuentaId = cuenta.CuentaId,
             NumeroCuenta = cuenta.NumeroCuenta,
             Tipo = "Retiro",
-            Monto = request.Monto,
-            Descripcion = $"Se debitó de la cuenta ${request.Monto:N2}.",
+            Monto = totalDebitado,
+            Descripcion = $"Se debitó de la cuenta ${request.Monto:N2} más comisión de ${COMISION:N2}.",
             CreadoEn = DateTime.UtcNow
         });
 
         await db.SaveChangesAsync();
-        return Results.Ok(new { mensaje = $"Retiro de ${request.Monto:N2} realizado.", saldo = cuenta.Saldo });
+        return Results.Ok(new { mensaje = $"Retiro de ${request.Monto:N2} realizado con comisión de ${COMISION:N2}.", saldo = cuenta.Saldo });
     }
 }

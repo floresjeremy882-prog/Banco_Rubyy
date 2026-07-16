@@ -17,9 +17,15 @@ No se basa en las capas clásicas "Controller → Service → Repository".
 
 Cada slice implementa un único caso de uso:
 - `AutenticacionSlice.cs`: consulta de saldo.
-- `DepositarSlice.cs`: deposito.
-- `RetirarSlice.cs`: retiro.
+- `DepositarSlice.cs`: depósito con comisión.
+- `RetirarSlice.cs`: retiro con comisión.
+- `TransferirSlice.cs`: transferencia entre cuentas.
 - `HistorialSlice.cs`: historial de transacciones.
+
+### Estado actual
+- Las rutas ya no dependen de una capa de servicio compartida.
+- Cada slice hace su propia validación y devoluciones.
+- La lógica está separada por caso de uso, no por capa.
 
 ### Flujo
 1. El cliente llama la ruta HTTP.

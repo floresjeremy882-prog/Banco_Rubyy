@@ -212,6 +212,21 @@ public class CajeroConsole
             return;
         }
 
+        const decimal comision = 0.41m;
+        if (monto <= comision)
+        {
+            AnsiConsole.MarkupLine($"[red]El monto debe ser mayor que la comisión de ${comision:N2}.[/]");
+            return;
+        }
+
+        decimal neto = monto - comision;
+        AnsiConsole.MarkupLine($"[yellow]Se cobrará una comisión de ${comision:N2}. El monto neto acreditado será ${neto:N2}.[/]");
+        if (!AnsiConsole.Confirm("¿Desea continuar?"))
+        {
+            AnsiConsole.MarkupLine("[grey]Depósito cancelado.[/]");
+            return;
+        }
+
         string result = await _apiClient.DepositarAsync(_cuenta, monto);
         if (result.StartsWith("ERROR:", StringComparison.OrdinalIgnoreCase))
         {
@@ -229,14 +244,39 @@ public class CajeroConsole
                 return;
             }
 
-            string? mensaje = root.TryGetProperty("mensaje", out JsonElement m) ? m.GetString() : null;
-            decimal saldo = root.TryGetProperty("saldo", out JsonElement s) ? s.GetDecimal() : (root.TryGetProperty("saldoOrigen", out JsonElement so) ? so.GetDecimal() : 0m);
+            if (root.TryGetProperty("title", out JsonElement title))
+            {
+                string titleText = title.GetString() ?? string.Empty;
+                string detailText = root.TryGetProperty("detail", out JsonElement detail) ? detail.GetString() ?? string.Empty : string.Empty;
+                AnsiConsole.MarkupLine($"[red]{Markup.Escape(titleText)}[/]");
+                if (!string.IsNullOrEmpty(detailText))
+                    AnsiConsole.MarkupLine($"[red]{Markup.Escape(detailText)}[/]");
+                return;
+            }
 
-            if (!string.IsNullOrEmpty(mensaje)) AnsiConsole.MarkupLine($"[green]{Markup.Escape(mensaje)}[/]");
+            string? mensaje = root.TryGetProperty("mensaje", out JsonElement m) ? m.GetString() : (root.TryGetProperty("Mensaje", out JsonElement m2) ? m2.GetString() : null);
+            decimal saldo = 0m;
+            if (root.TryGetProperty("saldo", out JsonElement s))
+                saldo = s.GetDecimal();
+            else if (root.TryGetProperty("Saldo", out JsonElement s2))
+                saldo = s2.GetDecimal();
+
+            if (!string.IsNullOrEmpty(mensaje))
+                AnsiConsole.MarkupLine($"[green]{Markup.Escape(mensaje)}[/]");
+            else
+                AnsiConsole.MarkupLine($"[grey]Respuesta del servidor:[/] {Markup.Escape(result)}");
+
+            AnsiConsole.MarkupLine($"[bold]Monto depositado:[/] [yellow]${monto:N2}[/]");
+            AnsiConsole.MarkupLine($"[bold]Comisión:[/] [yellow]${comision:N2}[/]");
             AnsiConsole.MarkupLine($"[bold]Saldo actual:[/] [yellow]${saldo:N2}[/]");
         }
-        catch
+        catch (JsonException)
         {
+            AnsiConsole.WriteLine(result);
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Error al procesar respuesta: {Markup.Escape(ex.Message)}[/]");
             AnsiConsole.WriteLine(result);
         }
     }
@@ -253,6 +293,14 @@ public class CajeroConsole
         if (monto > LIMITE_RETIRO)
         {
             AnsiConsole.MarkupLine($"[red]ERROR: Límite de retiro {LIMITE_RETIRO:N0}.[/]");
+            return;
+        }
+
+        const decimal comision = 0.41m;
+        AnsiConsole.MarkupLine($"[yellow]Se cobrará una comisión de ${comision:N2}.[/]");
+        if (!AnsiConsole.Confirm("¿Desea continuar?"))
+        {
+            AnsiConsole.MarkupLine("[grey]Retiro cancelado.[/]");
             return;
         }
 
@@ -273,14 +321,39 @@ public class CajeroConsole
                 return;
             }
 
-            string? mensaje = root.TryGetProperty("mensaje", out JsonElement m) ? m.GetString() : null;
-            decimal saldo = root.TryGetProperty("saldo", out JsonElement s) ? s.GetDecimal() : (root.TryGetProperty("saldoOrigen", out JsonElement so) ? so.GetDecimal() : 0m);
+            if (root.TryGetProperty("title", out JsonElement title))
+            {
+                string titleText = title.GetString() ?? string.Empty;
+                string detailText = root.TryGetProperty("detail", out JsonElement detail) ? detail.GetString() ?? string.Empty : string.Empty;
+                AnsiConsole.MarkupLine($"[red]{Markup.Escape(titleText)}[/]");
+                if (!string.IsNullOrEmpty(detailText))
+                    AnsiConsole.MarkupLine($"[red]{Markup.Escape(detailText)}[/]");
+                return;
+            }
 
-            if (!string.IsNullOrEmpty(mensaje)) AnsiConsole.MarkupLine($"[green]{Markup.Escape(mensaje)}[/]");
+            string? mensaje = root.TryGetProperty("mensaje", out JsonElement m) ? m.GetString() : (root.TryGetProperty("Mensaje", out JsonElement m2) ? m2.GetString() : null);
+            decimal saldo = 0m;
+            if (root.TryGetProperty("saldo", out JsonElement s))
+                saldo = s.GetDecimal();
+            else if (root.TryGetProperty("Saldo", out JsonElement s2))
+                saldo = s2.GetDecimal();
+
+            if (!string.IsNullOrEmpty(mensaje))
+                AnsiConsole.MarkupLine($"[green]{Markup.Escape(mensaje)}[/]");
+            else
+                AnsiConsole.MarkupLine($"[grey]Respuesta del servidor:[/] {Markup.Escape(result)}");
+
+            AnsiConsole.MarkupLine($"[bold]Monto retirado:[/] [yellow]${monto:N2}[/]");
+            AnsiConsole.MarkupLine($"[bold]Comisión:[/] [yellow]${comision:N2}[/]");
             AnsiConsole.MarkupLine($"[bold]Saldo actual:[/] [yellow]${saldo:N2}[/]");
         }
-        catch
+        catch (JsonException)
         {
+            AnsiConsole.WriteLine(result);
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Error al procesar respuesta: {Markup.Escape(ex.Message)}[/]");
             AnsiConsole.WriteLine(result);
         }
     }
@@ -342,6 +415,16 @@ public class CajeroConsole
                 string desc = string.Empty;
                 if (item.TryGetProperty("descripcion", out JsonElement dc)) desc = dc.GetString() ?? string.Empty;
                 else if (item.TryGetProperty("Descripcion", out JsonElement dc2)) desc = dc2.GetString() ?? string.Empty;
+
+                string tipoLower = tipo.ToLowerInvariant();
+                if (tipoLower.Contains("retiro") || tipoLower.Contains("withdrawal"))
+                {
+                    desc = $"Se debitó de la cuenta ${monto:N2}";
+                }
+                else if (tipoLower.Contains("deposit") || tipoLower.Contains("depósito") || tipoLower.Contains("dep"))
+                {
+                    desc = $"Se acreditó a la cuenta ${monto:N2}";
+                }
 
                 // Lee "creadoEn" o "CreadoEn"
                 DateTime fechaRaw = DateTime.MinValue;

@@ -8,7 +8,10 @@ public static class HistorialSlice
 {
     public static async Task<object> ObtenerAsync(string numeroCuenta, BancoRubyDbContext db)
     {
-        Cuenta cuenta = await db.Cuentas.FirstOrDefaultAsync(c => c.NumeroCuenta == numeroCuenta && c.Estado);
+        Cuenta? cuenta = await db.Cuentas
+            .Include(c => c.Usuario)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.NumeroCuenta == numeroCuenta && c.Estado);
         if (cuenta is null)
         {
             return Results.NotFound(new { error = "Cuenta no encontrada o inactiva." });
@@ -21,7 +24,7 @@ public static class HistorialSlice
             .Select(a => new HistorialResumen(a.Tipo, a.Monto, a.Descripcion, a.CreadoEn))
             .ToListAsync();
 
-        return Results.Ok(new { titular = cuenta.Usuario?.Nombre, historial = auditorias });
+        return Results.Ok(new { titular = cuenta.Usuario?.Nombre ?? string.Empty, historial = auditorias });
     }
 
     private sealed record HistorialResumen(string Tipo, decimal Monto, string Descripcion, DateTime CreadoEn);
