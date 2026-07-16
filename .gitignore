@@ -1,0 +1,35 @@
+# Ignore build outputs
+[Bb]in/
+[Oo]bj/
+_out/
+
+# Visual Studio temporary files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / ReSharper
+.idea/
+*.sln.iml
+*.[Rr]e[Ss]harper
+
+# NuGet
+*.nupkg
+packages/
+.nuget/
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Ignore package caches
+project.assets.json
+project.nuget.cache
+*.nuget.dgspec.json
