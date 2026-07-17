@@ -1,33 +1,26 @@
 # Documentación del proyecto Banco Ruby
 
 ## Resumen
-Este proyecto tiene dos partes:
+Este proyecto tiene dos partes principales:
 
-- Banco_Ruby: es la API del banco.
-- Usuario_Cliente: es un programa de consola que usa esa API.
+- Banco_Ruby: API del banco con operaciones de cuentas, transferencias y auditoría.
+- Usuario_Cliente: cliente de consola que consume la API.
 
-La carpeta Documentacion guarda los documentos y diagramas del proyecto.
+La carpeta Documentacion reúne los documentos, diagramas y reglas de negocio del sistema.
 
-## Estructura simple
-El servidor está organizado de forma clara y sencilla usando slices verticales:
+## Arquitectura actual
+El backend usa una mezcla de vertical slice y un enfoque DDD ligero:
 
-- Common/: modelos y peticiones compartidas.
-- Features/: cada operación tiene su propia parte.
-  - Autenticacion
-  - Operaciones
-  - Transferencias
-  - Historial
+- Features/: contiene los slices de aplicación por caso de uso.
+- Domain/: encapsula la regla de negocio crítica de las transferencias.
+- Infrastructure/: abstrae la integración externa con el banco destino.
+- Common/: modelos y request DTOs compartidos.
 
-## ¿Por qué está organizado así?
-- Cada función vive en su propio espacio.
-- Es más fácil entender y mantener el código.
-- El servidor expone rutas simples para cada acción.
-- El backend evita capas innecesarias y pone la lógica de negocio en slices directos.
-
-## Comisiones y comportamiento actual
-- Depósitos y retiros aplican una comisión fija de $0.41.
-- Las transacciones registran auditoría con descripciones legibles.
-- El cliente de consola confirma la comisión antes de enviar la operación.
+## Reglas de negocio actuales
+- Depósito: aplica una comisión fija de $0.41.
+- Retiro: exige monto múltiplo de 10, máximo $500 y aplica comisión de $0.41.
+- Transferencia: si la integración externa falla por timeout o excepción, el sistema revierte el movimiento y devuelve un mensaje de transacción fallida.
+- Todas las operaciones registran auditoría con descripciones legibles.
 
 ## Cómo usarlo
 ### Ejecutar el servidor
@@ -46,6 +39,12 @@ cd "c:\Users\jerenmi.flores\Downloads\Bnaco_Ruby\Bnaco_Ruby\Usuario_Cliente"
 dotnet run
 ```
 
+### Ejecutar pruebas
+```powershell
+cd "c:\Users\jerenmi.flores\Downloads\Bnaco_Ruby\Bnaco_Ruby"
+dotnet test BancoRuby.Tests/BancoRuby.Tests.csproj
+```
+
 ### Opciones disponibles
 - Consultar saldo
 - Depositar
@@ -57,4 +56,5 @@ dotnet run
 - Reglas_Del_Negocio
 - vertical-slice.md
 - interceptor_transferencia.md
-- archivos con la explicación general del proyecto
+- DOCUMENTO GENERAL.md
+- DOCUMENTO PARA EXPLICAR.md

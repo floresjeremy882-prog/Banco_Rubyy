@@ -11,7 +11,7 @@ El script hace lo siguiente:
 - registra el saldo inicial en `auditoria`
 
 ## Cadena de conexión
-Guarda la conexión en `Banco_Ruby/Banco_Ruby/appsettings.json`:
+Guarda la conexión en `Banco_Ruby/appsettings.json`:
 
 ```json
 {
@@ -27,7 +27,7 @@ Ajusta el usuario y la contraseña según tu instalación de PostgreSQL.
 Si quieres usar Entity Framework Core, instala estos paquetes:
 
 ```powershell
-dotnet add Banco_Ruby/Banco_Ruby/BancoRuby.csproj package Npgsql.EntityFrameworkCore.PostgreSQL
+dotnet add Banco_Ruby/BancoRuby.csproj package Npgsql.EntityFrameworkCore.PostgreSQL
 ```
 
 En `Program.cs` puedes agregar:

@@ -1,6 +1,8 @@
 using BancoCenit;
 using BancoCenit.Common;
+using BancoCenit.Domain.Transferencias;
 using BancoCenit.Features;
+using BancoCenit.Infrastructure;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -12,8 +14,10 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<BancoRubyDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("BancoRuby")));
+builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<BancoRubyDbContext>());
 
 builder.Services.AddScoped<AccountAuthorizationFilter>();
+builder.Services.AddScoped<ITransferenciaGateway, TransferenciaGateway>();
 
 WebApplication app = builder.Build();
 
@@ -35,7 +39,8 @@ app.MapPost("/retiro", RetirarSlice.RetirarAsync)
     .WithName("Retirar")
     .AddEndpointFilter<AccountAuthorizationFilter>();
 
-app.MapPost("/transferencia", TransferirSlice.TransferirAsync)
+app.MapPost("/transferencia", async (TransferenciaRequest request, BancoRubyDbContext db, ITransferenciaGateway gateway) =>
+    await TransferirSlice.TransferirAsync(request, db, gateway))
     .WithName("Transferir")
     .AddEndpointFilter<AccountAuthorizationFilter>();
 
@@ -46,7 +51,7 @@ app.MapGet("/historial/{numeroCuenta}", HistorialSlice.ObtenerAsync)
 // Compatibility adapter for client `Usuario_Cliente` which calls /api/cuentas/{numero}/...
 app.MapPost("/api/cuentas/{numero}/autenticar", async (string numero, HttpRequest req, BancoRubyDbContext db) =>
 {
-    Cuenta? cuenta = await db.Cuentas.Include(c => c.Usuario).AsNoTracking().FirstOrDefaultAsync(c => c.NumeroCuenta == numero && c.Estado);
+    Cuenta? cuenta = await db.Set<Cuenta>().Include(c => c.Usuario).AsNoTracking().FirstOrDefaultAsync(c => c.NumeroCuenta == numero && c.Estado);
     if (cuenta is null) return Results.NotFound(new { error = "Cuenta no encontrada o inactiva." });
 
     try
@@ -110,7 +115,7 @@ app.MapPost("/api/cuentas/{numero}/retirar", async (string numero, HttpRequest r
 })
 .AddEndpointFilter<AccountAuthorizationFilter>();
 
-app.MapPost("/api/cuentas/{numeroOrigen}/transferir", async (string numeroOrigen, HttpRequest req, BancoRubyDbContext db) =>
+app.MapPost("/api/cuentas/{numeroOrigen}/transferir", async (string numeroOrigen, HttpRequest req, BancoRubyDbContext db, ITransferenciaGateway gateway) =>
 {
     try
     {
@@ -119,7 +124,7 @@ app.MapPost("/api/cuentas/{numeroOrigen}/transferir", async (string numeroOrigen
         string cuentaDestino = root.GetProperty("CuentaDestino").GetString() ?? string.Empty;
         decimal monto = root.GetProperty("Monto").GetDecimal();
 
-        return await TransferirSlice.TransferirAsync(new TransferenciaRequest(numeroOrigen, cuentaDestino, monto), db);
+        return await TransferirSlice.TransferirAsync(new TransferenciaRequest(numeroOrigen, cuentaDestino, monto), db, gateway);
     }
     catch
     {

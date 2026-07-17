@@ -6,39 +6,39 @@ Una arquitectura vertical slice agrupa cada caso de uso en un módulo autónomo 
 - lógica de negocio
 - respuesta
 
-No se basa en las capas clásicas "Controller → Service → Repository".
+No se basa en las capas clásicas “Controller → Service → Repository”.
 
-## Implementación en este proyecto
+## Implementación actual en este proyecto
 
-### `Banco_Ruby`
-- `Program.cs`: define las rutas mínimas de la API.
-- `Common/`: contiene tipos de dominio compartidos.
-- `Features/`: contiene cada slice de funcionalidad.
+### Banco_Ruby
+- Program.cs: define las rutas mínimas de la API.
+- Common/: contiene tipos compartidos y DTOs.
+- Features/: contiene los slices de cada caso de uso.
+- Domain/: contiene la regla crítica de transferencias.
+- Infrastructure/: encapsula la integración con el banco externo.
 
-Cada slice implementa un único caso de uso:
-- `AutenticacionSlice.cs`: consulta de saldo.
-- `DepositarSlice.cs`: depósito con comisión.
-- `RetirarSlice.cs`: retiro con comisión.
-- `TransferirSlice.cs`: transferencia entre cuentas.
-- `HistorialSlice.cs`: historial de transacciones.
+Cada slice implementa un caso de uso concreto:
+- AutenticacionSlice.cs: consulta de saldo.
+- DepositarSlice.cs: depósito con comisión.
+- RetirarSlice.cs: retiro con comisión y límites.
+- TransferirSlice.cs: transferencia entre cuentas.
+- HistorialSlice.cs: historial de movimientos.
 
-### Estado actual
-- Las rutas ya no dependen de una capa de servicio compartida.
-- Cada slice hace su propia validación y devoluciones.
-- La lógica está separada por caso de uso, no por capa.
+## Estado actual
+- Las rutas siguen delegando en slices de aplicación.
+- La lógica crítica de la transferencia se mueve a una capa de dominio ligera.
+- La integración externa se encapsula en infrastructure para que sea más fácil reemplazarla por un servicio real.
 
-### Flujo
-1. El cliente llama la ruta HTTP.
-2. El endpoint mapea el request a un slice.
-3. El slice ejecuta la lógica y devuelve el resultado.
+## Flujo actual
+1. El cliente llama a una ruta HTTP.
+2. El endpoint transforma el request y delega al slice correspondiente.
+3. El slice ejecuta la operación y, en el caso de transferencias, usa el servicio de dominio.
+4. Si falla la integración externa, se revierte el cambio y se devuelve un mensaje de error.
 
 ## Ventajas
 - Mayor claridad por caso de uso.
 - Menos dependencias cruzadas.
-- Más fácil agregar nuevas operaciones.
-
-## Estado actual
-Este proyecto ya tiene una implementación simple de vertical slice en el servidor, con el cliente separado en `Usuario_Cliente`.
+- Fácil de extender con nuevas reglas o integraciones externas.
 
 ## Nota
-Las rutas del servidor están en `Banco_Ruby/Program.cs` y no se mezclan con lógica de presentación o infraestructura pesada.
+El proyecto sigue usando vertical slice, pero ya incorpora una separación más limpia entre aplicación, dominio e infraestructura.

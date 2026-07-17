@@ -1,4 +1,5 @@
 using BancoCenit.Common;
+using BancoCenit.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,9 +7,9 @@ namespace BancoCenit.Features;
 
 public static class HistorialSlice
 {
-    public static async Task<object> ObtenerAsync(string numeroCuenta, BancoRubyDbContext db)
+    public static async Task<object> ObtenerAsync(string numeroCuenta, DbContext db)
     {
-        Cuenta? cuenta = await db.Cuentas
+        Cuenta? cuenta = await db.Set<Cuenta>()
             .Include(c => c.Usuario)
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.NumeroCuenta == numeroCuenta && c.Estado);
@@ -17,7 +18,7 @@ public static class HistorialSlice
             return Results.NotFound(new { error = "Cuenta no encontrada o inactiva." });
         }
 
-        List<HistorialResumen> auditorias = await db.Auditoria
+        List<HistorialResumen> auditorias = await db.Set<Auditoria>()
             .AsNoTracking()
             .Where(a => a.CuentaId == cuenta.CuentaId)
             .OrderByDescending(a => a.CreadoEn)

@@ -1,122 +1,31 @@
-# Conectar un interceptor de transferencia
+# Integración de transferencias externas
 
-> Nota: la implementación actual del backend no utiliza un interceptor de transferencia ni `BankService`.
-> Este documento explica un enfoque legado que ya no está presente en el código actual.
+## Estado actual
 
-El código actual usa slices verticales directos y no incluye `ITransferInterceptor` ni la clase `BankService`.
+El proyecto ya no depende de un interceptor clásico como el que se describía antes. La transferencia externa ahora se maneja a través de un gateway en la capa de infraestructura y una regla de dominio que controla la reversión del movimiento si algo falla.
 
-## 1. Archivos clave
+## Qué hace el flujo actual
 
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/ITransferInterceptor.cs`
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/DefaultTransferInterceptor.cs`
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/BankService.cs`
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Program.cs`
+1. La transferencia se procesa en el slice de aplicación.
+2. El servicio de dominio aplica la lógica principal.
+3. El gateway externo intenta ejecutar la operación con el banco destino.
+4. Si ocurre un timeout o cualquier excepción, se revierte el cambio y se devuelve un mensaje de error.
 
-## 2. ¿Qué hace el interceptor?
+## Archivos clave
 
-El interceptor se ejecuta antes de que el servicio bancario ajuste los saldos en una transferencia. Su propósito es:
+- Banco_Ruby/Features/Transferencias/TransferirSlice.cs: orquesta la operación.
+- Banco_Ruby/Domain/Transferencias/TransferenciaService.cs: implementa la regla de negocio y la reversión.
+- Banco_Ruby/Infrastructure/TransferenciaGateway.cs: representa la integración externa.
+- Banco_Ruby/Program.cs: registra el gateway para que el slice pueda usarlo.
 
-- validar reglas adicionales
-- notificar otro servicio o proyecto
-- registrar información externa
-- cancelar la transferencia antes de aplicar el cambio de saldo
+## Comportamiento esperado
 
-## 3. Cómo conectar tu interceptor
+Si la transferencia falla:
 
-### 3.1 Implementa `ITransferInterceptor`
+- la cuenta origen recupera el monto original,
+- la cuenta destino vuelve a su saldo anterior,
+- la respuesta devuelve un mensaje tipo “Transacción fallida”.
 
-Crea una clase que implemente la interfaz:
+## Recomendación futura
 
-```csharp
-using BancoCenit.Common;
-using BancoCenit.Features;
-
-public sealed class MiTransferInterceptor : ITransferInterceptor
-{
-    public async Task InterceptTransferAsync(TransferenciaRequest request, Cuenta origen, Cuenta destino)
-    {
-        // Aquí va la lógica de conexión al otro proyecto.
-        // Por ejemplo: llamar a un API externo, validar autorización, enviar notificación, etc.
-
-        // Si necesitas cancelar la transferencia, lanza una excepción específica
-        // o maneja el error en el interceptor y registra el resultado.
-    }
-}
-```
-
-### 3.2 Registrar el interceptor en DI
-
-Abre `Banco_Ruby/Banco_Ruby/Banco_Ruby/Program.cs` y agrega el registro de tu clase:
-
-```csharp
-builder.Services.AddScoped<ITransferInterceptor, MiTransferInterceptor>();
-```
-
-Asegúrate de que esta línea esté antes de `builder.Build()`.
-
-### 3.3 Validar que el interceptor está en el flujo
-
-En `BankService` la transferencia ya llama al interceptor antes de modificar los saldos:
-
-```csharp
-await _transferInterceptor.InterceptTransferAsync(request, pair.origen, pair.destino);
-```
-
-Si esta llamada ocurre, el interceptor se ejecutará cada vez que se procese una transferencia.
-
-## 4. Qué pasa si el interceptor falla
-
-- Si lanza una excepción, la transferencia fallará y no se guardarán los cambios de saldo.
-- Si el interceptor solo registra información, la transferencia continuará normalmente.
-
-Para tener un control más claro, puedes usar un `try/catch` dentro del interceptor o dentro de `BankService`.
-
-## 5. Ejemplo de uso con un proyecto externo
-
-Supongamos que el interceptor debe notificar a un servicio externo antes de realizar la transferencia:
-
-```csharp
-public sealed class MiTransferInterceptor : ITransferInterceptor
-{
-    private readonly HttpClient _httpClient;
-
-    public MiTransferInterceptor(HttpClient httpClient)
-    {
-        _httpClient = httpClient;
-    }
-
-    public async Task InterceptTransferAsync(TransferenciaRequest request, Cuenta origen, Cuenta destino)
-    {
-        var payload = new
-        {
-            origen = request.NumeroCuentaOrigen,
-            destino = request.NumeroCuentaDestino,
-            monto = request.Monto,
-            concepto = request.Concepto
-        };
-
-        HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/external-transfer", payload);
-        response.EnsureSuccessStatusCode();
-    }
-}
-```
-
-Y registra el cliente HTTP:
-
-```csharp
-builder.Services.AddHttpClient<MiTransferInterceptor>(client =>
-{
-    client.BaseAddress = new Uri("https://otro-proyecto-api");
-});
-```
-
-## 6. Recomendaciones
-
-- Mantén el interceptor ligero: no debe contener la lógica principal de la transferencia.
-- Usa el interceptor para tareas transversales: auditoría externa, validación de reglas externas, llamadas a otros servicios.
-- Si necesitas decisiones complejas, tu interceptor puede devolver un resultado o lanzar una excepción controlada.
-- Siempre prueba la transferencia con el interceptor activado y desactivado.
-
-## 7. Confirmación de estado actual
-
-El proyecto ya está preparado para conectar el interceptor. Solo falta implementar y registrar la clase concreta en `Program.cs`.
+Cuando se conecte a un banco real, este gateway puede reemplazarse por una llamada HTTP o por un cliente de mensajería, sin cambiar la lógica de dominio.

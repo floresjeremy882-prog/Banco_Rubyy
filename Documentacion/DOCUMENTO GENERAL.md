@@ -2,95 +2,94 @@
 
 ## 1. Propósito del proyecto
 
-Este proyecto es una app bancaria simple con dos partes:
+Este proyecto implementa un pequeño sistema bancario con dos componentes principales:
 
-- Banco_Ruby: sirve la API del banco.
-- Usuario_Cliente: es un cliente de consola que usa esa API.
-
-La idea es ofrecer funciones básicas como ver saldo, depositar, retirar, transferir y revisar el historial.
+- Banco_Ruby: API REST para manejar cuentas, saldos, depósitos, retiros, transferencias e historial.
+- Usuario_Cliente: cliente de consola que consume la API para probar las operaciones.
 
 ## 2. Estructura general
 
 ### 2.1 Carpetas principales
 
 - Banco_Ruby: servidor principal.
-- Usuario_Cliente: cliente para probar la API.
-- Documentacion: guías, diagramas y explicaciones.
+- Usuario_Cliente: cliente de consola.
+- Documentacion: guías, diagramas y reglas del negocio.
 
-### 2.2 Librerías y dependencias usadas
+### 2.2 Dependencias principales
 
-- `Microsoft.EntityFrameworkCore` 8.0.0: ORM para acceso a datos en el backend.
-- `Npgsql.EntityFrameworkCore.PostgreSQL` 8.0.0: proveedor PostgreSQL para Entity Framework.
-- `Spectre.Console` 0.47.0: interfaz de consola para el cliente de usuario.
+- Microsoft.EntityFrameworkCore 8.0.0: acceso a datos.
+- Npgsql.EntityFrameworkCore.PostgreSQL 8.0.0: proveedor PostgreSQL.
+- Spectre.Console: interfaz de consola del cliente.
 
-### 2.3 Partes del servidor
+### 2.3 Estructura del servidor
 
 Dentro de Banco_Ruby:
 
-- Common/: modelos y peticiones compartidas.
-- Features/: lógica de negocio por caso de uso.
-  - Autenticacion: validación de cuentas.
-  - Operaciones: depósito, retiro y respuestas de operación.
-  - Transferencias: lógica de transferencia.
-  - Historial: consultas del historial.
-- Program.cs: define las rutas y registra servicios.
-- BancoRubyDbContext.cs: acceso a datos con Entity Framework y PostgreSQL.
+- Common/: modelos y request DTOs compartidos.
+- Features/: slices de aplicación por caso de uso.
+  - Autenticacion
+  - Operaciones
+  - Transferencias
+  - Historial
+- Domain/: lógica de dominio para reglas críticas, como la transferencia externa.
+- Infrastructure/: integración externa para la transferencia al banco destino.
+- Program.cs: define rutas y registra servicios.
+- BancoRubyDbContext.cs: contexto de EF Core con PostgreSQL.
 
 ## 3. Cómo funciona el servidor
 
-El servidor usa una estructura simple y directa con vertical slice:
+El servidor usa un enfoque híbrido:
 
-- Cada operación tiene su parte propia.
-- Los endpoints llaman directamente a un slice.
-- Cada slice valida los datos y aplica las reglas correspondientes.
-- Si todo está bien, se actualiza el saldo o se devuelve la información.
-- Las transferencias se procesan directamente en `TransferirSlice`.
+- Vertical slice para separar cada caso de uso.
+- Capa de dominio ligera para concentrar reglas sensibles.
+- Infrastructure para encapsular la interacción externa.
+
+Esto permite que la lógica de negocio no quede mezclada con la API y que las operaciones sean más fáciles de mantener.
 
 ## 4. Flujo de una petición
 
 1. El cliente llama a una ruta del servidor.
-2. El servidor valida si la cuenta es válida.
-3. Se llama al servicio para hacer la operación.
-4. El servicio revisa reglas y datos.
-5. Se guarda el cambio o se devuelve la información.
-- Si la operación fue correcta, se guarda auditoría directamente en la base de datos.
+2. El endpoint valida que las cuentas existan y estén activas.
+3. El slice correspondiente ejecuta la operación.
+4. La regla de dominio decide si la operación es válida.
+5. Si la operación es correcta, se actualiza el saldo y se registra auditoría.
 
-## 5. Componentes clave
+## 5. Flujo de transferencia actual
+
+La transferencia ahora sigue este comportamiento:
+
+1. Se descuenta el monto de la cuenta origen y se acredita en la cuenta destino en memoria.
+2. Se intenta enviar la operación al banco destino mediante el gateway externo.
+3. Si la integración falla por timeout o excepción, el sistema revierte los saldos y devuelve un mensaje de transacción fallida.
+4. Se registra la auditoría de la operación con el resultado final.
+
+## 6. Componentes clave
 
 ### Program.cs
 
-- Configura la app.
-- Registra servicios y rutas.
+- Configura la app web.
+- Registra el contexto de base de datos y el gateway de transferencias.
 - Define endpoints para saldo, depósito, retiro, transferencia e historial.
 
 ### BancoRubyDbContext.cs
 
-- Define las entidades de usuario, cuenta y auditoría.
-- Conecta con PostgreSQL.
+- Define las entidades Usuario, Cuenta y Auditoria.
+- Mapea los modelos a tablas PostgreSQL.
 
 ### Common/
 
 - Cuenta.cs: modelos de dominio.
-- Requests.cs: peticiones de entrada.
+- Requests.cs: DTOs de entrada.
 
-### Features/Operaciones
+### Domain/Transferencias
 
-Cada slice de `Features/Operaciones` maneja una operación concreta como depósito o retiro.
+- TransferenciaService.cs: aplica la regla de negocio y la reversión ante fallo externo.
 
-- `DepositarSlice.cs`: depósito con comisión y auditoría.
-- `RetirarSlice.cs`: retiro con comisión y auditoría.
+### Infrastructure/
 
-Usa respuestas directas de los slices para manejar errores y resultados.
+- TransferenciaGateway.cs: punto de integración con el proceso externo de transferencia.
 
-### Features/Autenticacion/AccountAuthorizationFilter.cs
-
-Valida que las cuentas existan y estén activas antes de seguir.
-
-## 6. Cliente de usuario
-
-El cliente de consola llama al servidor para hacer las operaciones. Se encarga de pedir datos al usuario y mostrar los resultados.
-
-## 7. Cómo ejecutar el proyecto
+## 7. Ejecución
 
 ### Servidor
 
@@ -106,10 +105,16 @@ cd "c:\Users\jerenmi.flores\Downloads\Bnaco_Ruby\Bnaco_Ruby\Usuario_Cliente"
 dotnet run
 ```
 
-## 8. Lo importante para explicar
+### Pruebas
 
-- El proyecto es simple y fácil de extender.
-- La lógica de negocio está bien separada en partes claras.
-- Hay validaciones antes de ejecutar operaciones.
-- El servidor usa slices verticales y evita una capa de servicio única.
-- Depósitos y retiros aplican comisión y registran auditoría con descripciones claras.
+```powershell
+cd "c:\Users\jerenmi.flores\Downloads\Bnaco_Ruby\Bnaco_Ruby"
+dotnet test BancoRuby.Tests/BancoRuby.Tests.csproj
+```
+
+## 8. Puntos clave para explicar
+
+- El proyecto es simple, pero ya incorpora una separación más clara entre aplicación, dominio e infraestructura.
+- La transferencia tiene protección contra fallos externos.
+- La auditoría permite rastrear cada movimiento.
+- El sistema está preparado para evolucionar hacia una integración real con un servicio bancario externo.

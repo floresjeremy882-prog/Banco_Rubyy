@@ -6,9 +6,9 @@ namespace BancoCenit.Features;
 
 public static class DepositarSlice
 {
-    public static async Task<object> DepositarAsync(DepositoRequest request, BancoRubyDbContext db)
+    public static async Task<object> DepositarAsync(DepositoRequest request, DbContext db)
     {
-        Cuenta? cuenta = await db.Cuentas
+        Cuenta? cuenta = await db.Set<Cuenta>()
             .Include(c => c.Usuario)
             .FirstOrDefaultAsync(c => c.NumeroCuenta == request.NumeroCuenta && c.Estado);
 
@@ -23,7 +23,7 @@ public static class DepositarSlice
         }
 
         cuenta.Saldo += request.Monto;
-        db.Auditoria.Add(new Auditoria
+        db.Set<Auditoria>().Add(new Auditoria
         {
             CuentaId = cuenta.CuentaId,
             NumeroCuenta = cuenta.NumeroCuenta,

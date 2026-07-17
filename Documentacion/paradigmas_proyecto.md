@@ -61,15 +61,15 @@ Esta documentación describe dónde y cómo se implementan los paradigmas del pr
 
 ## Archivos clave actuales
 
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Program.cs`
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/BancoRubyDbContext.cs`
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Common/Cuenta.cs`
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Common/Requests.cs`
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/AccountAuthorizationFilter.cs`
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/Operaciones/DepositarSlice.cs`
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/Operaciones/RetirarSlice.cs`
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/Transferencias/TransferirSlice.cs`
-- `Banco_Ruby/Banco_Ruby/Banco_Ruby/Features/Historial/HistorialSlice.cs`
+- `Banco_Ruby/Program.cs`
+- `Banco_Ruby/BancoRubyDbContext.cs`
+- `Banco_Ruby/Common/Cuenta.cs`
+- `Banco_Ruby/Common/Requests.cs`
+- `Banco_Ruby/Features/AccountAuthorizationFilter.cs`
+- `Banco_Ruby/Features/Operaciones/DepositarSlice.cs`
+- `Banco_Ruby/Features/Operaciones/RetirarSlice.cs`
+- `Banco_Ruby/Features/Transferencias/TransferirSlice.cs`
+- `Banco_Ruby/Features/Historial/HistorialSlice.cs`
 
 ## Flujo simplificado (pseudocódigo)
 

@@ -1,4 +1,5 @@
 using BancoCenit.Common;
+using BancoCenit.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +9,7 @@ public static class AutenticacionSlice
 {
     public static async Task<object> ConsultarSaldoAsync(string numeroCuenta, BancoRubyDbContext db)
     {
-        Cuenta? cuenta = await db.Cuentas
+        Cuenta? cuenta = await db.Set<Cuenta>()
             .Include(c => c.Usuario)
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.NumeroCuenta == numeroCuenta && c.Estado);

@@ -1,4 +1,5 @@
 using BancoCenit.Common;
+using BancoCenit.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Builder;
@@ -13,9 +14,9 @@ namespace BancoCenit.Features;
 
 public sealed class AccountAuthorizationFilter : IEndpointFilter
 {
-    private readonly BancoRubyDbContext _db;
+    private readonly DbContext _db;
 
-    public AccountAuthorizationFilter(BancoRubyDbContext db)
+    public AccountAuthorizationFilter(DbContext db)
     {
         _db = db;
     }
@@ -27,7 +28,7 @@ public sealed class AccountAuthorizationFilter : IEndpointFilter
         {
             foreach (string numeroCuenta in accountNumbers.Distinct())
             {
-                bool exists = await _db.Cuentas.AsNoTracking().AnyAsync(c => c.NumeroCuenta == numeroCuenta && c.Estado);
+                bool exists = await _db.Set<Cuenta>().AsNoTracking().AnyAsync(c => c.NumeroCuenta == numeroCuenta && c.Estado);
                 if (!exists)
                 {
                     return Results.NotFound(new { error = $"Cuenta {numeroCuenta} no encontrada o inactiva." });

@@ -1,4 +1,5 @@
 using BancoCenit.Common;
+using BancoCenit.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,9 +9,9 @@ public static class RetirarSlice
 {
     private const decimal COMISION = 0.41m;
 
-    public static async Task<object> RetirarAsync(RetiroRequest request, BancoRubyDbContext db)
+    public static async Task<object> RetirarAsync(RetiroRequest request, DbContext db)
     {
-        Cuenta? cuenta = await db.Cuentas.FirstOrDefaultAsync(c => c.NumeroCuenta == request.NumeroCuenta && c.Estado);
+        Cuenta? cuenta = await db.Set<Cuenta>().FirstOrDefaultAsync(c => c.NumeroCuenta == request.NumeroCuenta && c.Estado);
         if (cuenta is null)
         {
             return Results.NotFound(new { error = "Cuenta no encontrada o inactiva." });
@@ -38,7 +39,7 @@ public static class RetirarSlice
         }
 
         cuenta.Saldo -= totalDebitado;
-        db.Auditoria.Add(new Auditoria
+        db.Set<Auditoria>().Add(new Auditoria
         {
             CuentaId = cuenta.CuentaId,
             NumeroCuenta = cuenta.NumeroCuenta,
